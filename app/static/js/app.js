@@ -109,6 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </svg>
                     <span class="action-count down-count">${data.thumbs_down}</span>
                 </button>
+                <button class="upload-btn neon-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
             </div>
         `;
 
@@ -127,6 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         upBtn.addEventListener('click', () => vote(data.id, 'up', upBtn, downBtn));
         downBtn.addEventListener('click', () => vote(data.id, 'down', upBtn, downBtn));
+
+        container.querySelector('.upload-btn').addEventListener('click', openUploadModal);
         
         // Toggle play/pause on video click
         const video = container.querySelector('video');
@@ -169,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Modal Logic
-    const uploadBtn = document.getElementById('floating-upload-btn');
     const modal = document.getElementById('upload-modal');
     const closeBtn = document.getElementById('close-modal');
     const form = document.getElementById('upload-form');
@@ -187,14 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    uploadBtn.addEventListener('click', () => {
+    function openUploadModal() {
         modal.classList.remove('hidden');
         statusMsg.textContent = '';
         statusMsg.className = 'status-msg';
         form.reset();
         fileLabel.textContent = 'Choose Video';
         fileLabel.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-    });
+    }
 
     closeBtn.addEventListener('click', () => {
         modal.classList.add('hidden');

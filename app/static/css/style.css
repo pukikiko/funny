@@ -59,10 +59,11 @@ body {
 /* Overlay Actions */
 .video-actions {
     position: absolute;
-    right: 15px;
-    bottom: 100px;
+    right: 25px;
+    bottom: 25px;
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 20px;
     z-index: 10;
 }
@@ -101,11 +102,8 @@ body {
     font-weight: 600;
 }
 
-/* Floating Upload Button */
+/* Upload Button (in per-video action column) */
 .upload-btn {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
     background: var(--accent);
     color: white;
     border: none;
@@ -118,7 +116,6 @@ body {
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(236, 72, 153, 0.5);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    z-index: 20;
 }
 
 .upload-btn:hover {
