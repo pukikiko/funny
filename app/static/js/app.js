@@ -67,6 +67,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // ---- Volume (localStorage) ----
+    const VOLUME_KEY = 'funny_volume';
+    const VOLUME_ICONS = {
+        mute: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'),
+        low:  parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>'),
+        med:  parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'),
+        high: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'),
+    };
+
+    function getVolume() {
+        const v = parseFloat(localStorage.getItem(VOLUME_KEY));
+        return isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.5;
+    }
+
+    function setVolume(v) {
+        v = Math.max(0, Math.min(1, v));
+        localStorage.setItem(VOLUME_KEY, String(v));
+        applyVolumeToAllVideos();
+        refreshVolumeButtons();
+    }
+
+    function volumeIconFor(v) {
+        if (v === 0) return VOLUME_ICONS.mute;
+        if (v < 0.34) return VOLUME_ICONS.low;
+        if (v < 0.67) return VOLUME_ICONS.med;
+        return VOLUME_ICONS.high;
+    }
+
+    function applyVolumeToVideo(video) {
+        const v = getVolume();
+        video.volume = v;
+        video.muted = v === 0;
+    }
+
+    function applyVolumeToAllVideos() {
+        document.querySelectorAll('video.video-player').forEach(applyVolumeToVideo);
+    }
+
+    function refreshVolumeButtons() {
+        const v = getVolume();
+        document.querySelectorAll('.volume-btn .icon').forEach(el => {
+            el.replaceChildren(volumeIconFor(v).cloneNode(true));
+        });
+        document.querySelectorAll('.volume-slider').forEach(slider => {
+            // skip the slider currently being dragged so we don't fight the user
+            if (slider !== document.activeElement) slider.value = String(v);
+        });
+    }
+
+    // On touch devices, close any open volume popup when the user taps
+    // outside its control. Hover devices use the CSS :hover rule.
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.volume-control')) return;
+        document.querySelectorAll('.volume-control.show-slider').forEach(el => {
+            el.classList.remove('show-slider');
+        });
+    });
+
     // Intersection Observer for auto-playing videos in view
     const observerOptions = {
         root: feed,
@@ -151,6 +209,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </svg>
             </div>
             <div class="video-actions">
+                <div class="volume-control">
+                    <button class="action-btn volume-btn" title="Volume" aria-label="Volume"><span class="icon"></span></button>
+                    <div class="volume-slider-popup">
+                        <input type="range" class="volume-slider" min="0" max="1" step="0.01" aria-label="Volume">
+                    </div>
+                </div>
                 <button class="action-btn mode-btn" title="Feed mode"></button>
                 <button class="action-btn upvote-btn" data-id="${data.id}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -192,6 +256,21 @@ document.addEventListener('DOMContentLoaded', () => {
         container.querySelector('.upload-btn').addEventListener('click', openUploadModal);
         container.querySelector('.mode-btn').addEventListener('click', cycleMode);
         refreshModeButtons();
+
+        // Volume: slider drag updates persisted volume + all video elements
+        const volumeControl = container.querySelector('.volume-control');
+        const volumeSlider = volumeControl.querySelector('.volume-slider');
+        const volumeBtn = volumeControl.querySelector('.volume-btn');
+        volumeSlider.value = String(getVolume());
+        volumeSlider.addEventListener('input', e => setVolume(parseFloat(e.target.value)));
+        // Touch devices: tap to toggle the popup (hover devices use CSS)
+        if (!window.matchMedia('(hover: hover)').matches) {
+            volumeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                volumeControl.classList.toggle('show-slider');
+            });
+        }
+        refreshVolumeButtons();
         
         // Toggle play/pause on video click
         const video = container.querySelector('video');
@@ -208,6 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Driven by the native play/pause events so it stays in sync.
         video.addEventListener('play', () => container.classList.remove('paused'));
         video.addEventListener('pause', () => container.classList.add('paused'));
+
+        // Apply the user's saved volume (videos default to muted so autoplay
+        // works; only unmute once the saved volume is above zero).
+        applyVolumeToVideo(video);
     }
 
     async function vote(videoId, action, upBtn, downBtn) {
