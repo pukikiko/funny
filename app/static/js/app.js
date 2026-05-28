@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // random: shuffle arrows
         random: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>'),
     };
+    const MODE_LABELS = {
+        algorithm: 'PipeAI Algorithm',
+        random: 'Randomised',
+    };
 
     function getMode() {
         const m = localStorage.getItem(MODE_KEY);
@@ -56,14 +60,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const next = MODES[(i + 1) % MODES.length];
         localStorage.setItem(MODE_KEY, next);
         refreshModeButtons();
+
+        // On touch devices, briefly flash the new mode's label so users
+        // know what they just switched to (no hover state to fall back on)
+        if (!window.matchMedia('(hover: hover)').matches) {
+            document.querySelectorAll('.mode-control').forEach(el => {
+                el.classList.add('show-label');
+                clearTimeout(el._labelTimer);
+                el._labelTimer = setTimeout(() => el.classList.remove('show-label'), 1500);
+            });
+        }
     }
 
     function refreshModeButtons() {
         const mode = getMode();
+        const label = MODE_LABELS[mode];
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.replaceChildren(MODE_ICONS[mode].cloneNode(true));
-            btn.title = `Mode: ${mode} (click to change)`;
-            btn.setAttribute('aria-label', `Feed mode: ${mode}`);
+            btn.title = `Mode: ${label} (click to change)`;
+            btn.setAttribute('aria-label', `Feed mode: ${label}`);
+        });
+        document.querySelectorAll('.mode-label').forEach(el => {
+            el.textContent = label;
         });
     }
 
@@ -215,7 +233,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="range" class="volume-slider" min="0" max="1" step="0.01" aria-label="Volume">
                     </div>
                 </div>
-                <button class="action-btn mode-btn" title="Feed mode"></button>
+                <div class="mode-control">
+                    <button class="action-btn mode-btn" title="Feed mode"></button>
+                    <span class="mode-label"></span>
+                </div>
                 <button class="action-btn upvote-btn" data-id="${data.id}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>

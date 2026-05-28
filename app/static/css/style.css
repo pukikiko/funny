@@ -193,6 +193,43 @@ body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Mode toggle: button + label that appears on hover (desktop) or briefly
+   after a tap (mobile, via the .show-label class set by JS). */
+.mode-control {
+    position: relative;
+    display: flex;
+}
+
+.mode-label {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text-light);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+@media (hover: hover) {
+    .mode-control:hover .mode-label {
+        opacity: 1;
+    }
+}
+
+.mode-control.show-label .mode-label {
+    opacity: 1;
+}
+
 /* Overlay Actions */
 .video-actions {
     position: absolute;
