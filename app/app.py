@@ -1,3 +1,4 @@
+import math
 import os
 import random
 import shutil
@@ -113,16 +114,20 @@ def next_video():
         # decays over 30 days down to a baseline of 1.0
         age_hours = max((now - v.created_at).total_seconds() / 3600, 0)
         recency = max(1.0, 10.0 - (age_hours / 72))  # 10 -> 1 over ~30 days
-        
-        # Popularity score: net likes with a small baseline
-        popularity = 1.0 + max(0, v.thumbs_up - v.thumbs_down)
-        
-        # Watched penalty: heavily reduce weight but don't fully exclude,
-        # so users can still re-encounter popular older content
-        watched_mult = 0.1 if v.id in watched_ids else 1.0
-        
+
+        # Popularity score: log-dampened net likes so a single 200-like
+        # video doesn't dominate the whole feed. A 0-vote video starts at
+        # 1.0; 10 net likes -> ~3.4; 200 net likes -> ~6.3.
+        net_likes = max(0, v.thumbs_up - v.thumbs_down)
+        popularity = 1.0 + math.log1p(net_likes)
+
+        # Watched penalty: 100x downweight (not full exclusion, so users
+        # can still re-encounter popular older content once they've burned
+        # through everything new)
+        watched_mult = 0.01 if v.id in watched_ids else 1.0
+
         score = recency * popularity * watched_mult
-        scored.append((v, max(score, 0.01)))  # Floor at 0.01 to never be zero
+        scored.append((v, max(score, 0.001)))  # Floor so score never hits zero
     
     # Weighted random selection
     total = sum(s for _, s in scored)
