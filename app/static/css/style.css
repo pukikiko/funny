@@ -56,6 +56,36 @@ body {
     object-fit: contain;
 }
 
+/* Paused-state play indicator */
+.play-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: rgba(255, 255, 255, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0;
+    pointer-events: none; /* clicks pass through to the video underneath */
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 5;
+}
+
+.play-indicator svg {
+    width: 44px;
+    height: 44px;
+}
+
+.video-container.paused .play-indicator {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
 /* Overlay Actions */
 .video-actions {
     position: absolute;

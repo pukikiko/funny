@@ -78,7 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
         entries.forEach(entry => {
             const video = entry.target.querySelector('video');
             if (entry.isIntersecting) {
-                if (video) video.play().catch(e => console.log('Autoplay prevented:', e));
+                if (video) {
+                    // Hide the indicator preemptively so it doesn't flash
+                    // while autoplay is starting; restore it only if the
+                    // play() promise actually rejects.
+                    entry.target.classList.remove('paused');
+                    video.play().catch(e => {
+                        console.log('Autoplay prevented:', e);
+                        entry.target.classList.add('paused');
+                    });
+                }
                 // Mark this video as watched when it comes into view
                 const videoId = entry.target.dataset.videoId;
                 if (videoId) markWatched(parseInt(videoId));
@@ -136,6 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         container.innerHTML = `
             <video class="video-player" src="/videos/${data.filename}" loop playsinline preload="metadata"></video>
+            <div class="play-indicator" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="8 5 19 12 8 19 8 5"></polygon>
+                </svg>
+            </div>
             <div class="video-actions">
                 <button class="action-btn mode-btn" title="Feed mode"></button>
                 <button class="action-btn upvote-btn" data-id="${data.id}">
@@ -188,6 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 video.pause();
             }
         });
+
+        // Show the play indicator whenever the video is paused (whether
+        // by user click, scrolling out of view, or blocked autoplay).
+        // Driven by the native play/pause events so it stays in sync.
+        video.addEventListener('play', () => container.classList.remove('paused'));
+        video.addEventListener('pause', () => container.classList.add('paused'));
     }
 
     async function vote(videoId, action, upBtn, downBtn) {
