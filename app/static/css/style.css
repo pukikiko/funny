@@ -56,13 +56,314 @@ body {
     object-fit: contain;
 }
 
+/* Paused-state play indicator */
+.play-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.45);
+    color: rgba(255, 255, 255, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0;
+    pointer-events: none; /* clicks pass through to the video underneath */
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 5;
+}
+
+.play-indicator svg {
+    width: 44px;
+    height: 44px;
+}
+
+.video-container.paused .play-indicator {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Volume control: a button in the action column with a popup vertical slider.
+   On hover-capable devices the popup reveals on hover; on touch devices a tap
+   toggles the `.show-slider` class via JS. */
+.volume-control {
+    position: relative;
+    display: flex;
+}
+
+.volume-btn .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.volume-btn .icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.volume-slider-popup {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 24px;
+    width: 36px;
+    height: 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+/* Invisible bridge across the 8px gap between the popup and the volume
+   button so the cursor doesn't fall through dead space while travelling
+   from the button to the slider. Slightly oversized for forgiveness. */
+.volume-slider-popup::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    right: -12px;
+    width: 14px;
+}
+
+@media (hover: hover) {
+    .volume-control:hover .volume-slider-popup,
+    .volume-control:focus-within .volume-slider-popup {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.volume-control.show-slider .volume-slider-popup {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.volume-slider {
+    /* horizontal range rotated to vertical; width here is the visual height */
+    width: 110px;
+    height: 24px;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    margin: 0;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+}
+.volume-slider::-moz-range-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 2px;
+    border: none;
+}
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: -5px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Global video scrubber pinned to the bottom of the viewport. The
+   container is taller than the visible track so the hit area is forgiving
+   on touch; the visible bar grows on hover/drag for affordance. */
+#video-scrubber {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 18px;
+    z-index: 50;
+    cursor: pointer;
+    touch-action: none; /* don't scroll/zoom while dragging */
+    display: flex;
+    align-items: flex-end;
+}
+
+.scrubber-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.18);
+    transition: height 0.15s ease;
+    pointer-events: none; /* clicks are handled by the container */
+}
+
+#video-scrubber:hover .scrubber-track,
+#video-scrubber.dragging .scrubber-track {
+    height: 6px;
+}
+
+.scrubber-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+}
+
+/* Mode toggle: button + label that appears on hover (desktop) or briefly
+   after a tap (mobile, via the .show-label class set by JS). */
+.mode-control {
+    position: relative;
+    display: flex;
+}
+
+.mode-label {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text-light);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+@media (hover: hover) {
+    .mode-control:hover .mode-label {
+        opacity: 1;
+    }
+}
+
+.mode-control.show-label .mode-label {
+    opacity: 1;
+}
+
+/* Share button: toggles a popup with copy-link / download options. */
+.share-control {
+    position: relative;
+    display: flex;
+}
+
+.share-popup {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 14px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 160px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 15;
+}
+
+.share-control.show-popup .share-popup {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.share-close {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-darker);
+    border: 1px solid var(--glass-border);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1;
+}
+
+.share-close svg {
+    width: 14px;
+    height: 14px;
+}
+
+.share-close:hover {
+    background: var(--danger);
+}
+
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.share-option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.share-option svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.share-option .label {
+    white-space: nowrap;
+}
+
 /* Overlay Actions */
 .video-actions {
     position: absolute;
-    right: 15px;
-    bottom: 100px;
+    right: 25px;
+    bottom: 25px;
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 20px;
     z-index: 10;
 }
@@ -101,11 +402,8 @@ body {
     font-weight: 600;
 }
 
-/* Floating Upload Button */
+/* Upload Button (in per-video action column) */
 .upload-btn {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
     background: var(--accent);
     color: white;
     border: none;
@@ -118,7 +416,6 @@ body {
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(236, 72, 153, 0.5);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    z-index: 20;
 }
 
 .upload-btn:hover {

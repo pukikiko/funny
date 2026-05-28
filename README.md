@@ -32,7 +32,16 @@ Edit `docker-compose.yml` to fit your environment. See the volume mounts and env
 | variable | description |
 |----------|-------------|
 | `ADMIN_USERNAME` | username for the admin panel |
-| `ADMIN_PASSWORD` | password for the admin panel |
+| `ADMIN_PASSWORD_HASH` | werkzeug-format password hash for the admin panel (see below) |
+| `REDIS_URL` | redis connection string for the rate-limit store (defaults to the bundled `redis` service) |
+
+#### generating an admin password hash
+
+the admin password is stored hashed (scrypt) so the plaintext never sits in env or memory. generate the hash and paste it into `ADMIN_PASSWORD_HASH`:
+
+```bash
+python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass()))"
+```
 
 ### 3. run it
 
