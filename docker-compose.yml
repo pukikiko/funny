@@ -10,7 +10,11 @@ services:
     environment:
       - FLASK_ENV=production
       - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=CHANGETHISPASSWORDNOW
+      # dev-only hash for the password "CHANGETHISPASSWORDNOW".
+      # generate a fresh hash for production:
+      #   python -c "from werkzeug.security import generate_password_hash; import getpass; print(generate_password_hash(getpass.getpass()))"
+      # NOTE: literal `$` in compose env values must be escaped as `$$`
+      - ADMIN_PASSWORD_HASH=scrypt:32768:8:1$$ssfodVrYovb9qlZ3$$2198e3b54ef73723e67a75a60679912fb94ae6da4858a29a6dabfdcb5553f8f3d62f4ef8ae08a55a74e95760c3a7e4a8b7fdebcfca12ef9cece0e54adec196d8
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - redis

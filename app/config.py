@@ -19,9 +19,19 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024 # 50 MB max-limit
     ALLOWED_EXTENSIONS = {'mp4', 'webm', 'ogg'}
     
-    # Admin credentials
+    # Admin credentials. Password is stored as a werkzeug-format hash
+    # (scrypt by default) so the plaintext never sits in env or memory.
+    # Generate a new hash with:
+    #   python -c "from werkzeug.security import generate_password_hash; \
+    #              import getpass; print(generate_password_hash(getpass.getpass()))"
     ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME') or 'admin'
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'password'
+    # Dev-only fallback hash for the password 'password'. Real deployments
+    # must set ADMIN_PASSWORD_HASH.
+    ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH') or (
+        'scrypt:32768:8:1$Ex7ZvGUT5hqTOg09$4462ed63088531b17f6e7011310341d7'
+        '5355cdf53079a57e5faf8150b4f87cc520c784b42cd224fe99324af2922227b0'
+        '3ad16152943f7296e05402a58e11cfb3'
+    )
 
     # Rate limiting (shared across uWSGI workers via Redis)
     RATELIMIT_STORAGE_URI = os.environ.get('REDIS_URL') or 'memory://'

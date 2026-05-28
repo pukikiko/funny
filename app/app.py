@@ -8,6 +8,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 from app.config import Config
 from app.models import db, Video
@@ -44,7 +45,12 @@ with app.app_context():
         db.session.commit()
 
 def check_auth(username, password):
-    return username == app.config['ADMIN_USERNAME'] and password == app.config['ADMIN_PASSWORD']
+    if not username or not password:
+        return False
+    return (
+        username == app.config['ADMIN_USERNAME']
+        and check_password_hash(app.config['ADMIN_PASSWORD_HASH'], password)
+    )
 
 def authenticate():
     return Response(
