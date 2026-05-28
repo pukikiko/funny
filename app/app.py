@@ -86,12 +86,20 @@ def next_video():
     if not videos:
         return jsonify({'error': 'No videos available'}), 404
     
-    # Parse watched video IDs from the client (sent via query param)
+    # Parse watched video IDs from the client (sent via query param).
+    # Client localStorage is capped at 500 ids — anything wildly over that
+    # is abuse, so bail early before doing any parse work.
+    MAX_WATCHED_IDS = 500
     watched_param = request.args.get('watched', '')
+    if len(watched_param) > MAX_WATCHED_IDS * 12:  # ~12 chars per id with commas, generous
+        return jsonify({'error': 'watched parameter too large'}), 400
     watched_ids = set()
     if watched_param:
         try:
-            watched_ids = {int(x) for x in watched_param.split(',') if x.strip()}
+            watched_ids = {
+                int(x) for x in watched_param.split(',', MAX_WATCHED_IDS)[:MAX_WATCHED_IDS]
+                if x.strip()
+            }
         except ValueError:
             pass
     
