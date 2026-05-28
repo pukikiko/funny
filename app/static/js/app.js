@@ -168,11 +168,15 @@ document.addEventListener('DOMContentLoaded', () => {
         threshold: 0.7
     };
 
+    // The single video currently in view — scrubber tracks this one
+    let currentVideo = null;
+
     const videoObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const video = entry.target.querySelector('video');
             if (entry.isIntersecting) {
                 if (video) {
+                    currentVideo = video;
                     // Hide the indicator preemptively so it doesn't flash
                     // while autoplay is starting; restore it only if the
                     // play() promise actually rejects.
@@ -186,10 +190,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 const videoId = entry.target.dataset.videoId;
                 if (videoId) markWatched(parseInt(videoId));
             } else {
-                if (video) video.pause();
+                if (video) {
+                    video.pause();
+                    if (currentVideo === video) currentVideo = null;
+                }
             }
         });
     }, observerOptions);
+
+    // ---- Scrubber: tracks currentVideo and supports drag-to-seek ----
+    const scrubber = document.getElementById('video-scrubber');
+    const scrubberFill = scrubber.querySelector('.scrubber-fill');
+    let isDraggingScrubber = false;
+
+    function scrubberTick() {
+        requestAnimationFrame(scrubberTick);
+        if (isDraggingScrubber) return;
+        if (!currentVideo || !isFinite(currentVideo.duration) || currentVideo.duration === 0) {
+            scrubberFill.style.width = '0%';
+            return;
+        }
+        const pct = (currentVideo.currentTime / currentVideo.duration) * 100;
+        scrubberFill.style.width = `${pct}%`;
+    }
+    scrubberTick();
+
+    function seekToPointer(clientX) {
+        if (!currentVideo || !isFinite(currentVideo.duration) || currentVideo.duration === 0) return;
+        const rect = scrubber.getBoundingClientRect();
+        const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+        const pct = x / rect.width;
+        currentVideo.currentTime = pct * currentVideo.duration;
+        scrubberFill.style.width = `${pct * 100}%`;
+    }
+
+    scrubber.addEventListener('pointerdown', (e) => {
+        if (!currentVideo) return;
+        isDraggingScrubber = true;
+        scrubber.classList.add('dragging');
+        scrubber.setPointerCapture(e.pointerId);
+        seekToPointer(e.clientX);
+        e.preventDefault();
+    });
+    scrubber.addEventListener('pointermove', (e) => {
+        if (isDraggingScrubber) seekToPointer(e.clientX);
+    });
+    function endScrub(e) {
+        if (!isDraggingScrubber) return;
+        isDraggingScrubber = false;
+        scrubber.classList.remove('dragging');
+        try { scrubber.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    scrubber.addEventListener('pointerup', endScrub);
+    scrubber.addEventListener('pointercancel', endScrub);
 
     // Intersection Observer for infinite scrolling
     const lastVideoObserver = new IntersectionObserver((entries) => {

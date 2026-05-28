@@ -193,6 +193,42 @@ body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Global video scrubber pinned to the bottom of the viewport. The
+   container is taller than the visible track so the hit area is forgiving
+   on touch; the visible bar grows on hover/drag for affordance. */
+#video-scrubber {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 18px;
+    z-index: 50;
+    cursor: pointer;
+    touch-action: none; /* don't scroll/zoom while dragging */
+    display: flex;
+    align-items: flex-end;
+}
+
+.scrubber-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.18);
+    transition: height 0.15s ease;
+    pointer-events: none; /* clicks are handled by the container */
+}
+
+#video-scrubber:hover .scrubber-track,
+#video-scrubber.dragging .scrubber-track {
+    height: 6px;
+}
+
+.scrubber-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.5);
+}
+
 /* Mode toggle: button + label that appears on hover (desktop) or briefly
    after a tap (mobile, via the .show-label class set by JS). */
 .mode-control {
