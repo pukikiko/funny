@@ -3,3 +3,6 @@ Flask-SQLAlchemy==3.1.1
 Flask-Limiter==4.1.1
 redis==8.0.0
 Werkzeug==3.1.8
+ultralytics==8.3.26
+pytesseract==0.3.13
+opencv-python-headless==4.10.0.84

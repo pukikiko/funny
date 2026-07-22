@@ -5,6 +5,19 @@
     <!-- Videos will be injected here by JS -->
 </div>
 
+<!-- Top actions for search -->
+<div class="top-actions" style="position: absolute; top:25px; right:25px; z-index:10; display:flex; gap:10px;">
+    <button class="action-btn" id="open-search-btn" title="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+    </button>
+    <button class="action-btn" id="clear-search-btn" title="Clear Search" style="display:none; background:var(--danger)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+</div>
+
 <!-- Global scrubber pinned to the bottom of the viewport; follows the
      currently-visible video in the feed. -->
 <div id="video-scrubber" role="slider" aria-label="Video progress">
@@ -26,6 +39,19 @@
             </div>
             <div id="upload-status" class="status-msg"></div>
             <button type="submit" class="submit-btn primary-btn">Upload to Queue</button>
+        </form>
+    </div>
+</div>
+
+<!-- Search Modal (Hidden by default) -->
+<div id="search-overlay" class="modal-overlay hidden">
+    <div class="modal-content glass-panel">
+        <button id="close-search" class="close-btn">&times;</button>
+        <h2>Search Videos</h2>
+        <p class="subtitle">Search by detected AI tags & text</p>
+        <form id="search-form">
+            <input type="text" id="search-input" placeholder="e.g. cat, dog, sign..." autocomplete="off" style="width:100%; border:none; background:rgba(255,255,255,0.1); padding: 12px; margin-bottom:15px; border-radius:8px; color:#fff; font-size:16px; font-family:inherit;" required>
+            <button type="submit" class="submit-btn primary-btn">Search</button>
         </form>
     </div>
 </div>

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!feed) return; // Not on the index page
 
     let isFetching = false;
+    let currentSearchQuery = "";
 
     // ---- Watch History (localStorage) ----
     const STORAGE_KEY = 'funny_watched';
@@ -89,8 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const VOLUME_KEY = 'funny_volume';
     const VOLUME_ICONS = {
         mute: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'),
-        low:  parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>'),
-        med:  parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'),
+        low: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>'),
+        med: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>'),
         high: parseSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>'),
     };
 
@@ -239,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isDraggingScrubber) return;
         isDraggingScrubber = false;
         scrubber.classList.remove('dragging');
-        try { scrubber.releasePointerCapture(e.pointerId); } catch (_) {}
+        try { scrubber.releasePointerCapture(e.pointerId); } catch (_) { }
     }
     scrubber.addEventListener('pointerup', endScrub);
     scrubber.addEventListener('pointercancel', endScrub);
@@ -256,13 +257,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchNextVideo() {
         if (isFetching) return;
         isFetching = true;
-        
+
         try {
             const params = new URLSearchParams();
             const watched = getWatchedIds();
             if (watched.length > 0) params.set('watched', watched.join(','));
             const mode = getMode();
-            if (mode !== 'algorithm') params.set('mode', mode);
+            if (mode !== 'algorithm' && !currentSearchQuery) params.set('mode', mode);
+            if (currentSearchQuery) params.set('q', currentSearchQuery);
             const qs = params.toString();
             const response = await fetch(`/api/video/next${qs ? '?' + qs : ''}`);
             if (!response.ok) {
@@ -275,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 throw new Error('Network response was not ok');
             }
-            
+
             const videoData = await response.json();
             appendVideoElement(videoData);
         } catch (error) {
@@ -289,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.createElement('div');
         container.className = 'video-container';
         container.dataset.videoId = data.id;
-        
+
         container.innerHTML = `
             <video class="video-player" src="/videos/${data.filename}" loop playsinline preload="metadata"></video>
             <div class="play-indicator" aria-hidden="true">
@@ -365,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         feed.appendChild(container);
         videoObserver.observe(container);
-        
+
         // Re-observe the new last element for infinite scroll
         const allContainers = feed.querySelectorAll('.video-container');
         if (allContainers.length > 0) {
@@ -375,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Attach event listeners for voting
         const upBtn = container.querySelector('.upvote-btn');
         const downBtn = container.querySelector('.downvote-btn');
-        
+
         upBtn.addEventListener('click', () => vote(data.id, 'up', upBtn, downBtn));
         downBtn.addEventListener('click', () => vote(data.id, 'down', upBtn, downBtn));
 
@@ -433,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         refreshVolumeButtons();
-        
+
         // Toggle play/pause on video click
         const video = container.querySelector('video');
         video.addEventListener('click', () => {
@@ -458,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function vote(videoId, action, upBtn, downBtn) {
         // Prevent double voting locally for immediate UI feedback (simplified)
         if (upBtn.classList.contains('voted') || downBtn.classList.contains('voted')) return;
-        
+
         const btn = action === 'up' ? upBtn : downBtn;
         btn.classList.add('voted');
         btn.style.color = action === 'up' ? 'var(--success)' : 'var(--danger)';
@@ -471,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({ action: action })
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 upBtn.querySelector('.up-count').textContent = data.thumbs_up;
@@ -493,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileLabel = document.querySelector('.file-label');
 
     fileInput.addEventListener('change', (e) => {
-        if(e.target.files.length > 0) {
+        if (e.target.files.length > 0) {
             fileLabel.textContent = e.target.files[0].name;
             fileLabel.style.borderColor = 'var(--success)';
         } else {
@@ -524,21 +526,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const submitBtn = form.querySelector('button[type="submit"]');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Uploading...';
-        
+
         const formData = new FormData(form);
-        
+
         try {
             const response = await fetch('/upload', {
                 method: 'POST',
                 body: formData
             });
-            
+
             const data = await response.json();
-            
+
             if (response.ok) {
                 statusMsg.textContent = 'Upload successful! Pending moderation.';
                 statusMsg.className = 'status-msg success';
@@ -560,6 +562,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load: fetch first two videos to have something to scroll to
     fetchNextVideo().then(() => {
-        if(feed.children.length > 0) fetchNextVideo();
+        if (feed.children.length > 0) fetchNextVideo();
     });
+
+    // Search Logic
+    const searchModal = document.getElementById('search-overlay');
+    const closeSearchBtn = document.getElementById('close-search');
+    const searchForm = document.getElementById('search-form');
+    const openSearchBtn = document.getElementById('open-search-btn');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+
+    if (openSearchBtn) {
+        openSearchBtn.addEventListener('click', () => {
+            searchModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeSearchBtn) {
+        closeSearchBtn.addEventListener('click', () => {
+            searchModal.classList.add('hidden');
+        });
+    }
+
+    if (searchModal) {
+        searchModal.addEventListener('click', (e) => {
+            if (e.target === searchModal) {
+                searchModal.classList.add('hidden');
+            }
+        });
+    }
+
+    if (searchForm) {
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('search-input').value.trim();
+            if (input) {
+                currentSearchQuery = input;
+                searchModal.classList.add('hidden');
+                clearSearchBtn.style.display = 'block';
+                document.getElementById('search-input').value = '';
+
+                // clear current feed & fetch matching videos
+                feed.innerHTML = '';
+                fetchNextVideo().then(() => {
+                    if (feed.children.length > 0) fetchNextVideo();
+                });
+            }
+        });
+    }
+
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+            currentSearchQuery = "";
+            clearSearchBtn.style.display = 'none';
+            feed.innerHTML = '';
+            fetchNextVideo().then(() => {
+                if (feed.children.length > 0) fetchNextVideo();
+            });
+        });
+    }
 });

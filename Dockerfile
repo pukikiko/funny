@@ -1,6 +1,6 @@
-FROM python:3.14.5-alpine
+FROM python:3.11-slim
 
-RUN apk add --no-cache build-base linux-headers libffi-dev openssl-dev musl-dev
+RUN apt-get update && apt-get install -y build-essential python3-dev tesseract-ocr libtesseract-dev ffmpeg libgl1 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

@@ -10,9 +10,11 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash
+import threading
 from werkzeug.utils import secure_filename
 from app.config import Config
 from app.models import db, Video
+from app.processor import extract_tags_from_video
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -104,11 +106,19 @@ def next_video():
         except ValueError:
             pass
 
+    # Parse search parameters
+    search_q = request.args.get('q', '').lower().strip()
+    
+    if search_q:
+        videos = [v for v in videos if v.tags and search_q in v.tags.lower()]
+        if not videos:
+            return jsonify({'error': 'No matching videos found'}), 404
+
     # Mode selection. `random` = uniform over unwatched (falls back to all
     # videos once everything has been seen); anything else falls through
     # to the scoring algorithm below.
     mode = request.args.get('mode', 'algorithm')
-    if mode == 'random':
+    if mode == 'random' or search_q:
         pool = [v for v in videos if v.id not in watched_ids] or videos
         return jsonify(random.choice(pool).to_dict())
 
@@ -271,10 +281,39 @@ def admin_queue_action(filename, action):
         db.session.add(new_video)
         db.session.commit()
         
+        # Trigger background tagging
+        def background_tagging(video_id, path):
+            with app.app_context():
+                tags = extract_tags_from_video(path)
+                if tags:
+                    vid = Video.query.get(video_id)
+                    if vid:
+                        vid.tags = tags
+                        db.session.commit()
+                        
+        threading.Thread(target=background_tagging, args=(new_video.id, dest_path)).start()
+        
     elif action == 'reject':
         os.remove(source_path)
         
     return redirect(url_for('admin_queue'))
+
+@app.route('/admin/tag_all', methods=['POST'])
+@requires_auth
+def admin_tag_all():
+    def tag_all_background():
+        with app.app_context():
+            # Find all videos missing tags and process them
+            all_videos = Video.query.filter((Video.tags == None) | (Video.tags == "")).all()
+            for v in all_videos:
+                path = os.path.join(app.config['VIDEOS_FOLDER'], v.filename)
+                tags = extract_tags_from_video(path)
+                if tags:
+                    v.tags = tags
+                    db.session.commit()
+    
+    threading.Thread(target=tag_all_background).start()
+    return redirect(url_for('admin_dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)
